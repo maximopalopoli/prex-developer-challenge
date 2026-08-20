@@ -64,6 +64,21 @@ impl Service {
 
         Ok(client.balance)
     }
+
+    fn create_debit_transaction(
+        &mut self,
+        client_id: u64,
+        debit_amount: Decimal,
+    ) -> Result<Decimal, ServiceError> {
+        let client = self
+            .accounts
+            .get_mut(&client_id)
+            .ok_or(ServiceError::ClientDoesNotExist)?;
+
+        client.balance -= debit_amount;
+
+        Ok(client.balance)
+    }
 }
 
 struct Client {
@@ -168,5 +183,43 @@ mod tests {
             service.create_credit_transaction(0, Decimal::new(1, 1)),
             Err(ServiceError::ClientDoesNotExist)
         );
+    }
+
+    #[test]
+    fn test_debit_decrements_client_balance() {
+        let mut service = Service::new();
+
+        let client_id = add_account(&mut service, "document_number_1");
+
+        assert_eq!(
+            service.create_credit_transaction(client_id, Decimal::from(10)),
+            Ok(Decimal::from(10))
+        );
+
+        assert_eq!(
+            service.create_debit_transaction(client_id, Decimal::from(5)),
+            Ok(Decimal::from(5))
+        );
+
+        assert_eq!(service.client_balance(client_id), Ok(Decimal::from(5)));
+    }
+
+    #[test]
+    fn test_fractional_credit_and_debit() {
+        let mut service = Service::new();
+
+        let client_id = add_account(&mut service, "document_number_1");
+
+        assert_eq!(
+            service.create_credit_transaction(client_id, Decimal::new(1, 1)),
+            Ok(Decimal::new(1, 1))
+        );
+
+        assert_eq!(
+            service.create_debit_transaction(client_id, Decimal::new(1, 1)),
+            Ok(Decimal::ZERO)
+        );
+
+        assert_eq!(service.client_balance(client_id), Ok(Decimal::ZERO));
     }
 }
