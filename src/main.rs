@@ -1,3 +1,4 @@
+mod error;
 mod service;
 
 fn main() {
