@@ -222,4 +222,23 @@ mod tests {
 
         assert_eq!(service.client_balance(client_id), Ok(Decimal::ZERO));
     }
+
+    #[test]
+    fn debit_bigger_than_balance_leaves_negative_balance() {
+        let mut service = Service::new();
+
+        let client_id = add_account(&mut service, "document_number_1");
+
+        assert_eq!(
+            service.create_credit_transaction(client_id, Decimal::new(1, 1)),
+            Ok(Decimal::new(1, 1))
+        );
+
+        assert_eq!(
+            service.create_debit_transaction(client_id, Decimal::new(2, 1)),
+            Ok(Decimal::new(-1, 1))
+        );
+
+        assert_eq!(service.client_balance(client_id), Ok(Decimal::new(-1, 1)));
+    }
 }
