@@ -78,6 +78,15 @@ struct Client {
 mod tests {
     use super::*;
 
+    fn add_account(service: &mut Service, document: &str) -> u64 {
+        service.create_account(
+            "First".to_string(),
+            "birth_date".to_string(),
+            document.to_string(),
+            "Arg".to_string(),
+        )
+    }
+
     #[test]
     fn test_service_starts_empty() {
         let service = Service::new();
@@ -90,12 +99,7 @@ mod tests {
     fn test_client_created_with_empty_balance() {
         let mut service = Service::new();
 
-        let new_client_id = service.create_account(
-            "First".to_string(),
-            "birth_date".to_string(),
-            "document_number_1".to_string(),
-            "Arg".to_string(),
-        );
+        let new_client_id = add_account(&mut service, "document_number_1");
 
         assert_eq!(service.client_balance(new_client_id), Ok(Decimal::ZERO));
     }
@@ -104,19 +108,9 @@ mod tests {
     fn test_different_clients_have_different_ids() {
         let mut service = Service::new();
 
-        let first_client = service.create_account(
-            "First".to_string(),
-            "birth_date".to_string(),
-            "document_number_1".to_string(),
-            "Arg".to_string(),
-        );
+        let first_client = add_account(&mut service, "document_number_1");
 
-        let second_client = service.create_account(
-            "Second".to_string(),
-            "birth_date".to_string(),
-            "document_number_2".to_string(),
-            "Arg".to_string(),
-        );
+        let second_client = add_account(&mut service, "document_number_2");
 
         assert_ne!(first_client, second_client);
         assert_eq!(service.client_balance(first_client), Ok(Decimal::ZERO));
@@ -137,12 +131,7 @@ mod tests {
     fn test_credit_increments_client_balance() {
         let mut service = Service::new();
 
-        let client_id = service.create_account(
-            "First".to_string(),
-            "birth_date".to_string(),
-            "document_number_1".to_string(),
-            "Arg".to_string(),
-        );
+        let client_id = add_account(&mut service, "document_number_1");
 
         assert_eq!(
             service.create_credit_transaction(client_id, Decimal::from(10)),
@@ -156,12 +145,7 @@ mod tests {
     fn test_fractional_credits_are_added_exactly() {
         let mut service = Service::new();
 
-        let client_id = service.create_account(
-            "First".to_string(),
-            "birth_date".to_string(),
-            "document_number_1".to_string(),
-            "Arg".to_string(),
-        );
+        let client_id = add_account(&mut service, "document_number_1");
 
         assert_eq!(
             service.create_credit_transaction(client_id, Decimal::new(1, 1)),
