@@ -105,4 +105,14 @@ mod tests {
         assert_eq!(service.client_balance(first_client), Ok(0));
         assert_eq!(service.client_balance(second_client), Ok(0));
     }
+
+    #[test]
+    fn test_balance_on_nonexistent_client() {
+        let service = Service::new();
+
+        assert_eq!(
+            service.client_balance(0),
+            Err(ServiceError::ClientDoesNotExist)
+        );
+    }
 }
