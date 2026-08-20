@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use crate::error::ServiceError;
 
+use rust_decimal::Decimal;
+
 struct Service {
     accounts: HashMap<u64, Client>,
     id_count: u64,
@@ -28,7 +30,7 @@ impl Service {
             birth_date,
             document_number,
             country,
-            balance: 0,
+            balance: Decimal::ZERO,
         };
 
         let new_client_id = self.id_count;
@@ -41,7 +43,7 @@ impl Service {
         new_client_id
     }
 
-    fn client_balance(&self, client_id: u64) -> Result<i64, ServiceError> {
+    fn client_balance(&self, client_id: u64) -> Result<Decimal, ServiceError> {
         self.accounts
             .get(&client_id)
             .map(|client| client.balance)
@@ -50,7 +52,7 @@ impl Service {
 }
 
 struct Client {
-    balance: i64,
+    balance: Decimal,
     client_name: String,
     birth_date: String,
     document_number: String,
@@ -80,7 +82,7 @@ mod tests {
             "Arg".to_string(),
         );
 
-        assert_eq!(service.client_balance(new_client_id), Ok(0));
+        assert_eq!(service.client_balance(new_client_id), Ok(Decimal::ZERO));
     }
 
     #[test]
@@ -102,8 +104,8 @@ mod tests {
         );
 
         assert_ne!(first_client, second_client);
-        assert_eq!(service.client_balance(first_client), Ok(0));
-        assert_eq!(service.client_balance(second_client), Ok(0));
+        assert_eq!(service.client_balance(first_client), Ok(Decimal::ZERO));
+        assert_eq!(service.client_balance(second_client), Ok(Decimal::ZERO));
     }
 
     #[test]
