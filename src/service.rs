@@ -74,12 +74,35 @@ mod tests {
         let mut service = Service::new();
 
         let new_client_id = service.create_account(
-            "Name".to_string(),
+            "First".to_string(),
             "birth_date".to_string(),
-            "document_number".to_string(),
+            "document_number_1".to_string(),
             "Arg".to_string(),
         );
 
         assert_eq!(service.client_balance(new_client_id), Ok(0));
+    }
+
+    #[test]
+    fn test_different_clients_have_different_ids() {
+        let mut service = Service::new();
+
+        let first_client = service.create_account(
+            "First".to_string(),
+            "birth_date".to_string(),
+            "document_number_1".to_string(),
+            "Arg".to_string(),
+        );
+
+        let second_client = service.create_account(
+            "Second".to_string(),
+            "birth_date".to_string(),
+            "document_number_2".to_string(),
+            "Arg".to_string(),
+        );
+
+        assert_ne!(first_client, second_client);
+        assert_eq!(service.client_balance(first_client), Ok(0));
+        assert_eq!(service.client_balance(second_client), Ok(0));
     }
 }
