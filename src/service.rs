@@ -151,4 +151,38 @@ mod tests {
 
         assert_eq!(service.client_balance(client_id), Ok(Decimal::from(10)));
     }
+
+    #[test]
+    fn test_fractional_credits_are_added_exactly() {
+        let mut service = Service::new();
+
+        let client_id = service.create_account(
+            "First".to_string(),
+            "birth_date".to_string(),
+            "document_number_1".to_string(),
+            "Arg".to_string(),
+        );
+
+        assert_eq!(
+            service.create_credit_transaction(client_id, Decimal::new(1, 1)),
+            Ok(Decimal::new(1, 1))
+        );
+
+        assert_eq!(
+            service.create_credit_transaction(client_id, Decimal::new(2, 1)),
+            Ok(Decimal::new(3, 1))
+        );
+
+        assert_eq!(service.client_balance(client_id), Ok(Decimal::new(3, 1)));
+    }
+
+    #[test]
+    fn test_credit_on_nonexistent_client() {
+        let mut service = Service::new();
+
+        assert_eq!(
+            service.create_credit_transaction(0, Decimal::new(1, 1)),
+            Err(ServiceError::ClientDoesNotExist)
+        );
+    }
 }
