@@ -55,6 +55,8 @@ impl Service {
         client_id: u64,
         credit_amount: Decimal,
     ) -> Result<Decimal, ServiceError> {
+        validate_positive_amount(credit_amount)?;
+
         let client = self
             .accounts
             .get_mut(&client_id)
@@ -70,6 +72,8 @@ impl Service {
         client_id: u64,
         debit_amount: Decimal,
     ) -> Result<Decimal, ServiceError> {
+        validate_positive_amount(debit_amount)?;
+
         let client = self
             .accounts
             .get_mut(&client_id)
@@ -79,6 +83,14 @@ impl Service {
 
         Ok(client.balance)
     }
+}
+
+fn validate_positive_amount(amount: Decimal) -> Result<(), ServiceError> {
+    if amount <= Decimal::ZERO {
+        return Err(ServiceError::NonPositiveAmount);
+    }
+
+    Ok(())
 }
 
 struct Client {
@@ -224,7 +236,7 @@ mod tests {
     }
 
     #[test]
-    fn debit_bigger_than_balance_leaves_negative_balance() {
+    fn test_debit_bigger_than_balance_leaves_negative_balance() {
         let mut service = Service::new();
 
         let client_id = add_account(&mut service, "document_number_1");
@@ -240,5 +252,27 @@ mod tests {
         );
 
         assert_eq!(service.client_balance(client_id), Ok(Decimal::new(-1, 1)));
+    }
+
+    #[test]
+    fn test_credit_and_debit_reject_non_positive_amounts() {
+        let mut service = Service::new();
+
+        let client_id = add_account(&mut service, "document_number_1");
+
+        assert_eq!(
+            service.create_credit_transaction(client_id, Decimal::new(-1, 1)),
+            Err(ServiceError::NonPositiveAmount)
+        );
+
+        assert_eq!(
+            service.create_debit_transaction(client_id, Decimal::new(-1, 1)),
+            Err(ServiceError::NonPositiveAmount)
+        );
+
+        assert_eq!(
+            service.create_debit_transaction(client_id, Decimal::ZERO),
+            Err(ServiceError::NonPositiveAmount)
+        );
     }
 }
