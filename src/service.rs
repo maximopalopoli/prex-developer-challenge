@@ -49,6 +49,21 @@ impl Service {
             .map(|client| client.balance)
             .ok_or(ServiceError::ClientDoesNotExist)
     }
+
+    fn create_credit_transaction(
+        &mut self,
+        client_id: u64,
+        credit_amount: Decimal,
+    ) -> Result<Decimal, ServiceError> {
+        let client = self
+            .accounts
+            .get_mut(&client_id)
+            .ok_or(ServiceError::ClientDoesNotExist)?;
+
+        client.balance += credit_amount;
+
+        Ok(client.balance)
+    }
 }
 
 struct Client {
@@ -116,5 +131,24 @@ mod tests {
             service.client_balance(0),
             Err(ServiceError::ClientDoesNotExist)
         );
+    }
+
+    #[test]
+    fn test_credit_increments_client_balance() {
+        let mut service = Service::new();
+
+        let client_id = service.create_account(
+            "First".to_string(),
+            "birth_date".to_string(),
+            "document_number_1".to_string(),
+            "Arg".to_string(),
+        );
+
+        assert_eq!(
+            service.create_credit_transaction(client_id, Decimal::from(10)),
+            Ok(Decimal::from(10))
+        );
+
+        assert_eq!(service.client_balance(client_id), Ok(Decimal::from(10)));
     }
 }
