@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::error::ServiceError;
 
@@ -7,14 +7,17 @@ use rust_decimal::Decimal;
 struct Service {
     accounts: HashMap<u64, Client>,
     id_count: u64,
+    registered_documents: HashSet<String>,
 }
 
 impl Service {
     fn new() -> Self {
         let accounts = HashMap::new();
+        let registered_documents = HashSet::new();
         Service {
             accounts,
             id_count: 0,
+            registered_documents,
         }
     }
 
@@ -24,7 +27,13 @@ impl Service {
         birth_date: String,
         document_number: String,
         country: String,
-    ) -> u64 {
+    ) -> Result<u64, ServiceError> {
+        // Note: Here we may normalize the number before comparison
+        // as two strings may refer to the same number
+        if !self.registered_documents.insert(document_number.clone()) {
+            return Err(ServiceError::DuplicateDocument);
+        }
+
         let new_client = Client {
             client_name,
             birth_date,
@@ -40,7 +49,7 @@ impl Service {
         self.accounts.insert(new_client_id, new_client);
 
         self.id_count += 1;
-        new_client_id
+        Ok(new_client_id)
     }
 
     fn client_balance(&self, client_id: u64) -> Result<Decimal, ServiceError> {
@@ -106,12 +115,14 @@ mod tests {
     use super::*;
 
     fn add_account(service: &mut Service, document: &str) -> u64 {
-        service.create_account(
-            "First".to_string(),
-            "birth_date".to_string(),
-            document.to_string(),
-            "Arg".to_string(),
-        )
+        service
+            .create_account(
+                "First".to_string(),
+                "birth_date".to_string(),
+                document.to_string(),
+                "Arg".to_string(),
+            )
+            .unwrap()
     }
 
     #[test]
@@ -274,5 +285,25 @@ mod tests {
             service.create_debit_transaction(client_id, Decimal::ZERO),
             Err(ServiceError::NonPositiveAmount)
         );
+    }
+
+    #[test]
+    fn test_cannot_insert_same_document_twice() {
+        let mut service = Service::new();
+
+        add_account(&mut service, "document_number_1");
+
+        assert_eq!(
+            service.create_account(
+                "client_name".to_string(),
+                "birth_date".to_string(),
+                "document_number_1".to_string(),
+                "Arg".to_string()
+            ),
+            Err(ServiceError::DuplicateDocument)
+        );
+
+        let new_client_id = add_account(&mut service, "document_number_2");
+        assert_eq!(new_client_id, 1);
     }
 }

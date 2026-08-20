@@ -2,4 +2,5 @@
 pub(crate) enum ServiceError {
     ClientDoesNotExist,
     NonPositiveAmount,
+    DuplicateDocument,
 }
