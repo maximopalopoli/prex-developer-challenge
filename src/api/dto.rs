@@ -1,3 +1,4 @@
+use chrono::NaiveDate;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
@@ -6,7 +7,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize)]
 pub(crate) struct NewClientRequest {
     pub(crate) client_name: String,
-    pub(crate) birth_date: String,
+    pub(crate) birth_date: NaiveDate,
     pub(crate) document_number: String,
     pub(crate) country: String,
 }
@@ -45,7 +46,7 @@ pub(crate) struct ClientBalanceRequest {
 #[derive(Serialize)]
 pub(crate) struct ClientBalanceResponse {
     pub(crate) client_name: String,
-    pub(crate) birth_date: String,
+    pub(crate) birth_date: NaiveDate,
     pub(crate) document_number: String,
     pub(crate) country: String,
     pub(crate) client_balance: Decimal,

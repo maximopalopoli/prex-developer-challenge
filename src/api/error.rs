@@ -3,7 +3,7 @@ use std::fmt::Display;
 use actix_web::{HttpResponse, ResponseError, http::StatusCode};
 
 use crate::error::ServiceError::{
-    self, ClientDoesNotExist, DuplicateDocument, EmptyField, NonPositiveAmount,
+    self, ClientDoesNotExist, DuplicateDocument, EmptyField, FutureBirthDate, NonPositiveAmount,
 };
 
 #[derive(Debug)]
@@ -54,6 +54,7 @@ impl ResponseError for ApiError {
             Self::Domain(DuplicateDocument) => StatusCode::CONFLICT,
             Self::Domain(NonPositiveAmount) => StatusCode::BAD_REQUEST,
             Self::Domain(EmptyField(_)) => StatusCode::BAD_REQUEST,
+            Self::Domain(FutureBirthDate) => StatusCode::BAD_REQUEST,
             Self::LockPoisoned => StatusCode::INTERNAL_SERVER_ERROR,
             Self::FileWrite(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::BlockingTask => StatusCode::INTERNAL_SERVER_ERROR,

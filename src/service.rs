@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::{client::Client, error::ServiceError};
 
+use chrono::NaiveDate;
 use rust_decimal::Decimal;
 
 pub struct Service {
@@ -30,7 +31,7 @@ impl Service {
     pub(super) fn create_account(
         &mut self,
         client_name: String,
-        birth_date: String,
+        birth_date: NaiveDate,
         document_number: String,
         country: String,
     ) -> Result<u64, ServiceError> {
@@ -39,6 +40,7 @@ impl Service {
         let client_name = validate_non_empty(client_name, "client_name")?;
         let document_number = validate_non_empty(document_number, "document_number")?;
         let country = validate_non_empty(country, "country")?;
+        validate_past_date(birth_date)?;
 
         // Note: only the surrounding spaces are removed. Two documents that
         // differ in any other character are different documents.
@@ -132,6 +134,16 @@ impl Service {
     }
 }
 
+/// Today is read here and not received as a parameter to keep `create_account` signature tied to the request body.
+/// The tests stay deterministic because they use dates that are always in the past or always in the future.
+fn validate_past_date(date: NaiveDate) -> Result<(), ServiceError> {
+    if date > chrono::Local::now().date_naive() {
+        return Err(ServiceError::FutureBirthDate);
+    }
+
+    Ok(())
+}
+
 /// Returns the value without its surrounding spaces, or an error naming the field when nothing is left.
 fn validate_non_empty(value: String, field: &'static str) -> Result<String, ServiceError> {
     let value = value.trim();
@@ -155,11 +167,15 @@ fn validate_positive_amount(amount: Decimal) -> Result<(), ServiceError> {
 mod tests {
     use super::*;
 
+    fn birth_date() -> NaiveDate {
+        NaiveDate::from_ymd_opt(1990, 5, 12).expect("the test date is valid")
+    }
+
     fn add_account(service: &mut Service, document: &str) -> u64 {
         service
             .create_account(
                 "First".to_string(),
-                "birth_date".to_string(),
+                birth_date(),
                 document.to_string(),
                 "Arg".to_string(),
             )
@@ -358,7 +374,7 @@ mod tests {
         assert_eq!(
             service.create_account(
                 "client_name".to_string(),
-                "birth_date".to_string(),
+                birth_date(),
                 "document_number_1".to_string(),
                 "Arg".to_string()
             ),
@@ -376,7 +392,7 @@ mod tests {
         assert_eq!(
             service.create_account(
                 "   ".to_string(),
-                "1990-05-12".to_string(),
+                birth_date(),
                 "document_number_1".to_string(),
                 "Arg".to_string()
             ),
@@ -386,7 +402,7 @@ mod tests {
         assert_eq!(
             service.create_account(
                 "Juan".to_string(),
-                "1990-05-12".to_string(),
+                birth_date(),
                 "".to_string(),
                 "Arg".to_string()
             ),
@@ -396,11 +412,39 @@ mod tests {
         assert_eq!(
             service.create_account(
                 "Juan".to_string(),
-                "1990-05-12".to_string(),
+                birth_date(),
                 "document_number_1".to_string(),
                 " ".to_string()
             ),
             Err(ServiceError::EmptyField("country"))
+        );
+    }
+
+    #[test]
+    fn test_the_birth_date_cannot_be_in_the_future() {
+        let mut service = Service::new();
+
+        let tomorrow = chrono::Local::now().date_naive() + chrono::Days::new(1);
+
+        assert_eq!(
+            service.create_account(
+                "Juan".to_string(),
+                tomorrow,
+                "document_number_1".to_string(),
+                "Arg".to_string()
+            ),
+            Err(ServiceError::FutureBirthDate)
+        );
+
+        assert!(
+            service
+                .create_account(
+                    "Juan".to_string(),
+                    chrono::Local::now().date_naive(),
+                    "document_number_1".to_string(),
+                    "Arg".to_string()
+                )
+                .is_ok()
         );
     }
 
@@ -410,7 +454,7 @@ mod tests {
 
         let rejected = service.create_account(
             "".to_string(),
-            "1990-05-12".to_string(),
+            birth_date(),
             "document_number_1".to_string(),
             "Arg".to_string(),
         );
@@ -420,7 +464,7 @@ mod tests {
             service
                 .create_account(
                     "Juan".to_string(),
-                    "1990-05-12".to_string(),
+                    birth_date(),
                     "document_number_1".to_string(),
                     "Arg".to_string()
                 )
@@ -435,7 +479,7 @@ mod tests {
         let client_id = service
             .create_account(
                 "  Juan  ".to_string(),
-                "1990-05-12".to_string(),
+                birth_date(),
                 "  document_number_1 ".to_string(),
                 " Arg ".to_string(),
             )
@@ -550,7 +594,7 @@ mod tests {
         let client = service.client_info(client_id).unwrap();
 
         assert_eq!(client.client_name, "First");
-        assert_eq!(client.birth_date, "birth_date");
+        assert_eq!(client.birth_date, birth_date());
         assert_eq!(client.document_number, "document_number_1");
         assert_eq!(client.country, "Arg");
         assert_eq!(client.balance, Decimal::new(1, 1));

@@ -4,6 +4,7 @@ pub(crate) enum ServiceError {
     NonPositiveAmount,
     DuplicateDocument,
     EmptyField(&'static str),
+    FutureBirthDate,
 }
 
 impl std::fmt::Display for ServiceError {
@@ -13,6 +14,7 @@ impl std::fmt::Display for ServiceError {
             Self::NonPositiveAmount => write!(f, "amount must be greater than zero"),
             Self::DuplicateDocument => write!(f, "document number already registered"),
             Self::EmptyField(field) => write!(f, "the {field} field cannot be empty"),
+            Self::FutureBirthDate => write!(f, "the birth date cannot be in the future"),
         }
     }
 }
