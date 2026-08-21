@@ -28,3 +28,16 @@ pub(crate) struct NewCreditTransactionRequest {
 pub(crate) struct NewCreditTransactionResponse {
     pub(crate) client_balance: Decimal,
 }
+
+// NewDebitTransaction
+
+#[derive(Deserialize)]
+pub(crate) struct NewDebitTransactionRequest {
+    pub(crate) client_id: u64,
+    pub(crate) debit_amount: Decimal,
+}
+
+#[derive(Serialize)]
+pub(crate) struct NewDebitTransactionResponse {
+    pub(crate) client_balance: Decimal,
+}

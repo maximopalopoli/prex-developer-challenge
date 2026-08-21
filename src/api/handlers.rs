@@ -6,7 +6,7 @@ use crate::{
     api::{
         dto::{
             NewClientRequest, NewClientResponse, NewCreditTransactionRequest,
-            NewCreditTransactionResponse,
+            NewCreditTransactionResponse, NewDebitTransactionRequest, NewDebitTransactionResponse,
         },
         error::ApiError,
     },
@@ -57,6 +57,24 @@ async fn new_credit_transaction(
     };
 
     Ok(HttpResponse::Ok().json(NewCreditTransactionResponse {
+        client_balance: new_client_balance,
+    }))
+}
+
+#[post("/new_debit_transaction")]
+async fn new_debit_transaction(
+    info: web::Json<NewDebitTransactionRequest>,
+    service: web::Data<Mutex<Service>>,
+) -> Result<HttpResponse, ApiError> {
+    let req_data = info.into_inner();
+
+    let new_client_balance = {
+        let mut serv = get_lock(&service)?;
+
+        serv.create_debit_transaction(req_data.client_id, req_data.debit_amount)?
+    };
+
+    Ok(HttpResponse::Ok().json(NewDebitTransactionResponse {
         client_balance: new_client_balance,
     }))
 }

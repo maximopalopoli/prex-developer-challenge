@@ -14,6 +14,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(state.clone())
             .service(handlers::new_client)
             .service(handlers::new_credit_transaction)
+            .service(handlers::new_debit_transaction)
     })
     .bind(("127.0.0.1", 8080))?
     .run()
