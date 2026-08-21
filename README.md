@@ -31,10 +31,12 @@ being handed a float.
 You can find a Postman collection in `postman/`.
 
 ## Validations
-
-- The document number cannot be repeated. It is compared exactly as received, with no normalization, so `12.345.678` and `12345678` are two different documents.
+- `client_name`, `document_number` and `country` cannot be empty. Surrounding spaces are removed before storing them, so a document that differs only in spacing is the same document. Any other difference makes it a different one: `12.345.678` and `12345678` are not the same.
+- The document number cannot be repeated.
+- The birth date must be a real date and cannot be in the future. Typing the field as a date is what rejects `1990-13-45` before it reaches the service.
 - Credit and debit amounts must be strictly positive. Zero is rejected because a transaction with no effect is almost always a mistake by the caller.
 - Amounts are validated before the client is looked up, so a negative amount on an unknown client answers 400 and not 404.
+- Every field of a client is validated before anything is written, so a rejected client never leaves its document registered.
 - A debit is never rejected for insufficient funds.
 
 ## The balance file
