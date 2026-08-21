@@ -1,3 +1,4 @@
+pub mod api;
 mod client;
 mod error;
-mod service;
+pub mod service;

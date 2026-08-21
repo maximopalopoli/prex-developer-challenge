@@ -4,7 +4,7 @@ use crate::{client::Client, error::ServiceError};
 
 use rust_decimal::Decimal;
 
-struct Service {
+pub struct Service {
     accounts: HashMap<u64, Client>,
     next_client_id: u64,
     registered_documents: HashSet<String>,
@@ -12,7 +12,7 @@ struct Service {
 }
 
 impl Service {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Service {
             accounts: HashMap::new(),
             next_client_id: 0,
@@ -21,7 +21,7 @@ impl Service {
         }
     }
 
-    fn create_account(
+    pub(super) fn create_account(
         &mut self,
         client_name: String,
         birth_date: String,
@@ -42,25 +42,24 @@ impl Service {
             balance: Decimal::ZERO,
         };
 
-        let new_client_id = self.next_client_id;
+        self.next_client_id += 1;
 
         // As this id comes from a counter that only moves forward, the key
         // is always new and insert can never return a previous client.
-        self.accounts.insert(new_client_id, new_client);
+        self.accounts.insert(self.next_client_id, new_client);
 
-        self.next_client_id += 1;
-        Ok(new_client_id)
+        Ok(self.next_client_id)
     }
 
     // Check if this method is really needed as Service::client_info already exists
-    fn client_balance(&self, client_id: u64) -> Result<Decimal, ServiceError> {
+    pub(super) fn client_balance(&self, client_id: u64) -> Result<Decimal, ServiceError> {
         self.accounts
             .get(&client_id)
             .map(|client| client.balance)
             .ok_or(ServiceError::ClientDoesNotExist)
     }
 
-    fn create_credit_transaction(
+    pub(super) fn create_credit_transaction(
         &mut self,
         client_id: u64,
         credit_amount: Decimal,
@@ -77,7 +76,7 @@ impl Service {
         Ok(client.balance)
     }
 
-    fn create_debit_transaction(
+    pub(super) fn create_debit_transaction(
         &mut self,
         client_id: u64,
         debit_amount: Decimal,
@@ -94,7 +93,7 @@ impl Service {
         Ok(client.balance)
     }
 
-    fn store_balances(&mut self) -> (Vec<(u64, Decimal)>, u64) {
+    pub(super) fn store_balances(&mut self) -> (Vec<(u64, Decimal)>, u64) {
         let mut balances = Vec::new();
 
         for (client_id, client) in &mut self.accounts {
@@ -110,7 +109,7 @@ impl Service {
         (balances, self.file_counter)
     }
 
-    fn client_info(&self, client_id: u64) -> Result<Client, ServiceError> {
+    pub(super) fn client_info(&self, client_id: u64) -> Result<Client, ServiceError> {
         self.accounts
             .get(&client_id)
             .ok_or(ServiceError::ClientDoesNotExist)
@@ -317,7 +316,7 @@ mod tests {
         );
 
         let new_client_id = add_account(&mut service, "document_number_2");
-        assert_eq!(new_client_id, 1);
+        assert_eq!(new_client_id, 2);
     }
 
     #[test]
