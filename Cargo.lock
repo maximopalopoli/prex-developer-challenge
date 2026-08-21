@@ -1009,6 +1009,7 @@ dependencies = [
  "actix-web",
  "rust_decimal",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1214,6 +1215,7 @@ dependencies = [
  "serde",
  "serde_json",
  "wasm-bindgen",
+ "zmij",
 ]
 
 [[package]]

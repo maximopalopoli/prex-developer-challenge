@@ -1,22 +1,17 @@
 use std::sync::{Mutex, MutexGuard};
 
 use actix_web::{HttpResponse, post, web};
-use serde::{Deserialize, Serialize};
 
-use crate::{api::error::ApiError, service::Service};
-
-#[derive(Deserialize)]
-struct NewClientRequest {
-    client_name: String,
-    birth_date: String,
-    document_number: String,
-    country: String,
-}
-
-#[derive(Serialize)]
-struct NewClientResponse {
-    client_id: u64,
-}
+use crate::{
+    api::{
+        dto::{
+            NewClientRequest, NewClientResponse, NewCreditTransactionRequest,
+            NewCreditTransactionResponse,
+        },
+        error::ApiError,
+    },
+    service::Service,
+};
 
 fn get_lock(lock: &Mutex<Service>) -> Result<MutexGuard<'_, Service>, ApiError> {
     match lock.lock() {
@@ -45,5 +40,23 @@ async fn new_client(
 
     Ok(HttpResponse::Created().json(NewClientResponse {
         client_id: new_client_id,
+    }))
+}
+
+#[post("/new_credit_transaction")]
+async fn new_credit_transaction(
+    info: web::Json<NewCreditTransactionRequest>,
+    service: web::Data<Mutex<Service>>,
+) -> Result<HttpResponse, ApiError> {
+    let req_data = info.into_inner();
+
+    let new_client_balance = {
+        let mut serv = get_lock(&service)?;
+
+        serv.create_credit_transaction(req_data.client_id, req_data.credit_amount)?
+    };
+
+    Ok(HttpResponse::Ok().json(NewCreditTransactionResponse {
+        client_balance: new_client_balance,
     }))
 }
