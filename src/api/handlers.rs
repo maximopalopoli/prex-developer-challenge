@@ -7,11 +7,12 @@ use crate::{
         dto::{
             ClientBalanceRequest, ClientBalanceResponse, NewClientRequest, NewClientResponse,
             NewCreditTransactionRequest, NewCreditTransactionResponse, NewDebitTransactionRequest,
-            NewDebitTransactionResponse,
+            NewDebitTransactionResponse, StoreBalancesResponse,
         },
         error::ApiError,
     },
     service::Service,
+    storage,
 };
 
 fn get_lock(lock: &Mutex<Service>) -> Result<MutexGuard<'_, Service>, ApiError> {
@@ -99,5 +100,21 @@ async fn client_balance(
         document_number: client_info.document_number,
         country: client_info.country,
         client_balance: client_info.balance,
+    }))
+}
+
+#[post("/store_balances")]
+async fn store_balances(service: web::Data<Mutex<Service>>) -> Result<HttpResponse, ApiError> {
+    let (balances, file_number) = {
+        let mut serv = get_lock(&service)?;
+
+        serv.store_balances()
+    };
+
+    let generated_file_name =
+        storage::save_state(balances, file_number).map_err(|_| ApiError::Internal)?;
+
+    Ok(HttpResponse::Ok().json(StoreBalancesResponse {
+        generated_file_name,
     }))
 }

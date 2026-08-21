@@ -34,3 +34,8 @@ test_client_balance: build
 	@./target/debug/prex-challenge & PID=$$!; sleep 2; \
 	bash scripts/client_balance.sh; rc=$$?; \
 	kill $$PID; exit $$rc
+
+test_store_balances: build
+	@./target/debug/prex-challenge & PID=$$!; sleep 2; \
+	bash scripts/store_balances.sh; rc=$$?; \
+	kill $$PID; exit $$rc

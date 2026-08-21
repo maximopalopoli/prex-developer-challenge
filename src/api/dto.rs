@@ -57,3 +57,10 @@ pub(crate) struct ClientBalanceResponse {
     pub(crate) country: String,
     pub(crate) client_balance: Decimal,
 }
+
+// Store balances
+
+#[derive(Serialize)]
+pub(crate) struct StoreBalancesResponse {
+    pub(crate) generated_file_name: String,
+}
