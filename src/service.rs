@@ -110,6 +110,13 @@ impl Service {
 
         (balances, self.file_counter)
     }
+
+    fn client_info(&self, client_id: u64) -> Result<Client, ServiceError> {
+        self.accounts
+            .get(&client_id)
+            .ok_or(ServiceError::ClientDoesNotExist)
+            .cloned()
+    }
 }
 
 fn validate_positive_amount(amount: Decimal) -> Result<(), ServiceError> {
@@ -120,10 +127,11 @@ fn validate_positive_amount(amount: Decimal) -> Result<(), ServiceError> {
     Ok(())
 }
 
+#[derive(Clone, Debug, PartialEq)]
 struct Client {
     balance: Decimal,
     client_name: String,
-    birth_date: String,
+    birth_date: String, // Change to NaiveDate
     document_number: String,
     country: String,
 }
@@ -366,5 +374,24 @@ mod tests {
         let (balances, file_number) = service.store_balances();
         assert!(balances.is_empty());
         assert_eq!(file_number, 2);
+    }
+
+    #[test]
+    fn test_client_info_returns_client_data_and_balance() {
+        let mut service = Service::new();
+
+        let client_id = add_account(&mut service, "document_number_1");
+
+        assert_eq!(
+            service.create_credit_transaction(client_id, Decimal::new(1, 1)),
+            Ok(Decimal::new(1, 1))
+        );
+        let client = service.client_info(client_id).unwrap();
+
+        assert_eq!(client.client_name, "First");
+        assert_eq!(client.birth_date, "birth_date");
+        assert_eq!(client.document_number, "document_number_1");
+        assert_eq!(client.country, "Arg");
+        assert_eq!(client.balance, Decimal::new(1, 1));
     }
 }
