@@ -1,0 +1,21 @@
+.PHONY: build run test lint fmt test_new_client
+
+build:
+	cargo build
+
+run: build
+	cargo run
+
+test:
+	cargo test
+
+fmt:
+	cargo fmt
+
+lint:
+	cargo clippy --all-targets -- -D warnings
+
+test_new_client: build
+	@./target/debug/prex-challenge & PID=$$!; sleep 2; \
+	bash scripts/new_client.sh; rc=$$?; \
+	kill $$PID; exit $$rc
