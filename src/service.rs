@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::error::ServiceError;
+use crate::{client::Client, error::ServiceError};
 
 use rust_decimal::Decimal;
 
@@ -124,15 +124,6 @@ fn validate_positive_amount(amount: Decimal) -> Result<(), ServiceError> {
     }
 
     Ok(())
-}
-
-#[derive(Clone, Debug, PartialEq)]
-struct Client {
-    balance: Decimal,
-    client_name: String,
-    birth_date: String, // Change to NaiveDate
-    document_number: String,
-    country: String,
 }
 
 #[cfg(test)]
