@@ -107,6 +107,17 @@ impl Service {
         (balances, self.file_counter)
     }
 
+    /// Restores the balances of a cut that could not be persisted. The amounts are added, not assigned,
+    /// so transactions that arrived after the cut are kept. The file number is not given back: a partially
+    /// written file may already carry it.
+    pub(super) fn restore_balances(&mut self, balances: Vec<(u64, Decimal)>) {
+        for (client_id, balance) in balances {
+            if let Some(client) = self.accounts.get_mut(&client_id) {
+                client.balance += balance;
+            }
+        }
+    }
+
     pub(super) fn client_info(&self, client_id: u64) -> Result<Client, ServiceError> {
         self.accounts
             .get(&client_id)
@@ -388,6 +399,46 @@ mod tests {
         let (balances, file_number) = service.store_balances();
         assert!(balances.is_empty());
         assert_eq!(file_number, 2);
+    }
+
+    #[test]
+    fn test_restore_balances_puts_a_failed_cut_back() {
+        let mut service = Service::new();
+
+        let client_id = add_account(&mut service, "document_number_1");
+        service
+            .create_credit_transaction(client_id, Decimal::from(10))
+            .unwrap();
+
+        let (balances, _) = service.store_balances();
+        service.restore_balances(balances);
+
+        assert_eq!(
+            service.client_info(client_id).unwrap().balance,
+            Decimal::from(10)
+        );
+    }
+
+    #[test]
+    fn test_restore_balances_keeps_the_transactions_of_the_meantime() {
+        let mut service = Service::new();
+
+        let client_id = add_account(&mut service, "document_number_1");
+        service
+            .create_credit_transaction(client_id, Decimal::from(10))
+            .unwrap();
+
+        let (balances, _) = service.store_balances();
+
+        service
+            .create_credit_transaction(client_id, Decimal::from(4))
+            .unwrap();
+        service.restore_balances(balances);
+
+        assert_eq!(
+            service.client_info(client_id).unwrap().balance,
+            Decimal::from(14)
+        );
     }
 
     #[test]

@@ -1,5 +1,7 @@
 use std::sync::{Mutex, MutexGuard};
 
+use rust_decimal::Decimal;
+
 use actix_web::{HttpResponse, get, post, web};
 
 use crate::{
@@ -111,12 +113,42 @@ async fn store_balances(service: web::Data<Mutex<Service>>) -> Result<HttpRespon
         serv.store_balances()
     };
 
-    let generated_file_name = web::block(move || storage::save_state(balances, file_number))
+    // The cut already zeroed the balances in memory, so a write that fails would make that money disappear.
+    // The snapshot is kept to put it back.
+    let snapshot = balances.clone();
+
+    let written = web::block(move || storage::save_state(balances, file_number))
         .await
-        .map_err(|_| ApiError::BlockingTask)?
-        .map_err(ApiError::FileWrite)?;
+        .map_err(|_| ApiError::BlockingTask)
+        .and_then(|result| result.map_err(ApiError::FileWrite));
+
+    let generated_file_name = match written {
+        Ok(file_name) => file_name,
+        Err(error) => {
+            restore_after_a_failed_cut(&service, snapshot);
+            return Err(error);
+        }
+    };
 
     Ok(HttpResponse::Ok().json(StoreBalancesResponse {
         generated_file_name,
     }))
+}
+
+/// Adds a cut back to the balances after the file could not be written. If the
+/// lock cannot be taken there is nothing left to do but write the amounts to
+/// the log, so that the cut can be rebuilt by hand.
+fn restore_after_a_failed_cut(service: &Mutex<Service>, snapshot: Vec<(u64, Decimal)>) {
+    match service.lock() {
+        Ok(mut serv) => {
+            log::error!(
+                "the cut could not be written, restoring {} balances",
+                snapshot.len()
+            );
+            serv.restore_balances(snapshot);
+        }
+        Err(_) => {
+            log::error!("the cut could not be written or restored, balances were {snapshot:?}")
+        }
+    }
 }
