@@ -1,0 +1,154 @@
+{
+    "info": {
+        "_postman_id": "4b1f0d9e-8c2a-4f77-9a55-3d6e1c0b7a21",
+        "name": "Prex Challenge",
+        "description": "Mini payment processor. Set the base_url variable if the service does not run on the default host and port.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://127.0.0.1:8080"
+        }
+    ],
+    "item": [
+        {
+            "name": "new_client",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"client_name\": \"Juan\",\n    \"birth_date\": \"1990-05-12\",\n    \"document_number\": \"12345678\",\n    \"country\": \"AR\"\n}",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "{{base_url}}/new_client",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "new_client"
+                    ]
+                },
+                "description": "Creates a client and returns its id. The document number cannot be repeated: a second client with the same document answers 409."
+            },
+            "response": []
+        },
+        {
+            "name": "new_credit_transaction",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"client_id\": 1,\n    \"credit_amount\": 500.12\n}",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "{{base_url}}/new_credit_transaction",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "new_credit_transaction"
+                    ]
+                },
+                "description": "Adds to the balance of a client and returns the new balance. Answers 404 when the client does not exist and 400 when the amount is not positive."
+            },
+            "response": []
+        },
+        {
+            "name": "new_debit_transaction",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"client_id\": 1,\n    \"debit_amount\": 100.5\n}",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "{{base_url}}/new_debit_transaction",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "new_debit_transaction"
+                    ]
+                },
+                "description": "Subtracts from the balance of a client and returns the new balance. A debit larger than the balance is accepted and leaves the balance negative."
+            },
+            "response": []
+        },
+        {
+            "name": "client_balance",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/client_balance?user_id=1",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "client_balance"
+                    ],
+                    "query": [
+                        {
+                            "key": "user_id",
+                            "value": "1"
+                        }
+                    ]
+                },
+                "description": "Returns the information of a client and its balance. Answers 404 when the client does not exist and 400 when the parameter is missing."
+            },
+            "response": []
+        },
+        {
+            "name": "store_balances",
+            "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/store_balances",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "store_balances"
+                    ]
+                },
+                "description": "Writes every client id and balance to a DDMMYYYY_N.DAT file, leaves every balance at zero and returns the name of the generated file."
+            },
+            "response": []
+        }
+    ]
+}
