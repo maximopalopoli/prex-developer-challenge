@@ -6,7 +6,7 @@ use chrono::NaiveDate;
 use rust_decimal::Decimal;
 
 pub struct Service {
-    accounts: HashMap<u64, Client>,
+    clients: HashMap<u64, Client>,
     next_client_id: u64,
     registered_documents: HashSet<String>,
     file_counter: u64,
@@ -21,14 +21,14 @@ impl Default for Service {
 impl Service {
     pub fn new() -> Self {
         Service {
-            accounts: HashMap::new(),
+            clients: HashMap::new(),
             next_client_id: 0,
             registered_documents: HashSet::new(),
             file_counter: 0,
         }
     }
 
-    pub(super) fn create_account(
+    pub(super) fn create_client(
         &mut self,
         client_name: String,
         birth_date: NaiveDate,
@@ -60,7 +60,7 @@ impl Service {
 
         // As this id comes from a counter that only moves forward, the key
         // is always new and insert can never return a previous client.
-        self.accounts.insert(self.next_client_id, new_client);
+        self.clients.insert(self.next_client_id, new_client);
 
         Ok(self.next_client_id)
     }
@@ -73,7 +73,7 @@ impl Service {
         validate_positive_amount(credit_amount)?;
 
         let client = self
-            .accounts
+            .clients
             .get_mut(&client_id)
             .ok_or(ServiceError::ClientDoesNotExist)?;
 
@@ -90,7 +90,7 @@ impl Service {
         validate_positive_amount(debit_amount)?;
 
         let client = self
-            .accounts
+            .clients
             .get_mut(&client_id)
             .ok_or(ServiceError::ClientDoesNotExist)?;
 
@@ -102,7 +102,7 @@ impl Service {
     pub(super) fn store_balances(&mut self) -> (Vec<(u64, Decimal)>, u64) {
         let mut balances = Vec::new();
 
-        for (client_id, client) in &mut self.accounts {
+        for (client_id, client) in &mut self.clients {
             balances.push((*client_id, client.balance));
             client.balance = Decimal::ZERO;
         }
@@ -120,21 +120,21 @@ impl Service {
     /// written file may already carry it.
     pub(super) fn restore_balances(&mut self, balances: Vec<(u64, Decimal)>) {
         for (client_id, balance) in balances {
-            if let Some(client) = self.accounts.get_mut(&client_id) {
+            if let Some(client) = self.clients.get_mut(&client_id) {
                 client.balance += balance;
             }
         }
     }
 
     pub(super) fn client_info(&self, client_id: u64) -> Result<Client, ServiceError> {
-        self.accounts
+        self.clients
             .get(&client_id)
             .ok_or(ServiceError::ClientDoesNotExist)
             .cloned()
     }
 }
 
-/// Today is read here and not received as a parameter to keep `create_account` signature tied to the request body.
+/// Today is read here and not received as a parameter to keep `create_client` signature tied to the request body.
 /// The tests stay deterministic because they use dates that are always in the past or always in the future.
 fn validate_past_date(date: NaiveDate) -> Result<(), ServiceError> {
     if date > chrono::Local::now().date_naive() {
@@ -171,9 +171,9 @@ mod tests {
         NaiveDate::from_ymd_opt(1990, 5, 12).expect("the test date is valid")
     }
 
-    fn add_account(service: &mut Service, document: &str) -> u64 {
+    fn add_client(service: &mut Service, document: &str) -> u64 {
         service
-            .create_account(
+            .create_client(
                 "First".to_string(),
                 birth_date(),
                 document.to_string(),
@@ -186,7 +186,7 @@ mod tests {
     fn test_client_created_with_empty_balance() {
         let mut service = Service::new();
 
-        let new_client_id = add_account(&mut service, "document_number_1");
+        let new_client_id = add_client(&mut service, "document_number_1");
 
         assert_eq!(
             service.client_info(new_client_id).unwrap().balance,
@@ -198,9 +198,9 @@ mod tests {
     fn test_different_clients_have_different_ids() {
         let mut service = Service::new();
 
-        let first_client = add_account(&mut service, "document_number_1");
+        let first_client = add_client(&mut service, "document_number_1");
 
-        let second_client = add_account(&mut service, "document_number_2");
+        let second_client = add_client(&mut service, "document_number_2");
 
         assert_ne!(first_client, second_client);
         assert_eq!(
@@ -227,7 +227,7 @@ mod tests {
     fn test_credit_increments_client_balance() {
         let mut service = Service::new();
 
-        let client_id = add_account(&mut service, "document_number_1");
+        let client_id = add_client(&mut service, "document_number_1");
 
         assert_eq!(
             service.create_credit_transaction(client_id, Decimal::from(10)),
@@ -244,7 +244,7 @@ mod tests {
     fn test_fractional_credits_are_added_exactly() {
         let mut service = Service::new();
 
-        let client_id = add_account(&mut service, "document_number_1");
+        let client_id = add_client(&mut service, "document_number_1");
 
         assert_eq!(
             service.create_credit_transaction(client_id, Decimal::new(1, 1)),
@@ -276,7 +276,7 @@ mod tests {
     fn test_debit_decrements_client_balance() {
         let mut service = Service::new();
 
-        let client_id = add_account(&mut service, "document_number_1");
+        let client_id = add_client(&mut service, "document_number_1");
 
         assert_eq!(
             service.create_credit_transaction(client_id, Decimal::from(10)),
@@ -298,7 +298,7 @@ mod tests {
     fn test_fractional_credit_and_debit() {
         let mut service = Service::new();
 
-        let client_id = add_account(&mut service, "document_number_1");
+        let client_id = add_client(&mut service, "document_number_1");
 
         assert_eq!(
             service.create_credit_transaction(client_id, Decimal::new(1, 1)),
@@ -320,7 +320,7 @@ mod tests {
     fn test_debit_bigger_than_balance_leaves_negative_balance() {
         let mut service = Service::new();
 
-        let client_id = add_account(&mut service, "document_number_1");
+        let client_id = add_client(&mut service, "document_number_1");
 
         assert_eq!(
             service.create_credit_transaction(client_id, Decimal::new(1, 1)),
@@ -342,7 +342,7 @@ mod tests {
     fn test_credit_and_debit_reject_non_positive_amounts() {
         let mut service = Service::new();
 
-        let client_id = add_account(&mut service, "document_number_1");
+        let client_id = add_client(&mut service, "document_number_1");
 
         assert_eq!(
             service.create_credit_transaction(client_id, Decimal::new(-1, 1)),
@@ -369,10 +369,10 @@ mod tests {
     fn test_cannot_insert_same_document_twice() {
         let mut service = Service::new();
 
-        add_account(&mut service, "document_number_1");
+        add_client(&mut service, "document_number_1");
 
         assert_eq!(
-            service.create_account(
+            service.create_client(
                 "client_name".to_string(),
                 birth_date(),
                 "document_number_1".to_string(),
@@ -381,7 +381,7 @@ mod tests {
             Err(ServiceError::DuplicateDocument)
         );
 
-        let new_client_id = add_account(&mut service, "document_number_2");
+        let new_client_id = add_client(&mut service, "document_number_2");
         assert_eq!(new_client_id, 2);
     }
 
@@ -390,7 +390,7 @@ mod tests {
         let mut service = Service::new();
 
         assert_eq!(
-            service.create_account(
+            service.create_client(
                 "   ".to_string(),
                 birth_date(),
                 "document_number_1".to_string(),
@@ -400,7 +400,7 @@ mod tests {
         );
 
         assert_eq!(
-            service.create_account(
+            service.create_client(
                 "Juan".to_string(),
                 birth_date(),
                 "".to_string(),
@@ -410,7 +410,7 @@ mod tests {
         );
 
         assert_eq!(
-            service.create_account(
+            service.create_client(
                 "Juan".to_string(),
                 birth_date(),
                 "document_number_1".to_string(),
@@ -427,7 +427,7 @@ mod tests {
         let tomorrow = chrono::Local::now().date_naive() + chrono::Days::new(1);
 
         assert_eq!(
-            service.create_account(
+            service.create_client(
                 "Juan".to_string(),
                 tomorrow,
                 "document_number_1".to_string(),
@@ -438,7 +438,7 @@ mod tests {
 
         assert!(
             service
-                .create_account(
+                .create_client(
                     "Juan".to_string(),
                     chrono::Local::now().date_naive(),
                     "document_number_1".to_string(),
@@ -452,7 +452,7 @@ mod tests {
     fn test_a_rejected_client_leaves_its_document_free() {
         let mut service = Service::new();
 
-        let rejected = service.create_account(
+        let rejected = service.create_client(
             "".to_string(),
             birth_date(),
             "document_number_1".to_string(),
@@ -462,7 +462,7 @@ mod tests {
 
         assert!(
             service
-                .create_account(
+                .create_client(
                     "Juan".to_string(),
                     birth_date(),
                     "document_number_1".to_string(),
@@ -477,7 +477,7 @@ mod tests {
         let mut service = Service::new();
 
         let client_id = service
-            .create_account(
+            .create_client(
                 "  Juan  ".to_string(),
                 birth_date(),
                 "  document_number_1 ".to_string(),
@@ -503,8 +503,8 @@ mod tests {
     fn test_store_balances_multiple_accounts() {
         let mut service = Service::new();
 
-        let client_1 = add_account(&mut service, "document_number_1");
-        let client_2 = add_account(&mut service, "document_number_2");
+        let client_1 = add_client(&mut service, "document_number_1");
+        let client_2 = add_client(&mut service, "document_number_2");
 
         service
             .create_credit_transaction(client_2, Decimal::new(5, 1))
@@ -545,7 +545,7 @@ mod tests {
     fn test_restore_balances_puts_a_failed_cut_back() {
         let mut service = Service::new();
 
-        let client_id = add_account(&mut service, "document_number_1");
+        let client_id = add_client(&mut service, "document_number_1");
         service
             .create_credit_transaction(client_id, Decimal::from(10))
             .unwrap();
@@ -563,7 +563,7 @@ mod tests {
     fn test_restore_balances_keeps_the_transactions_of_the_meantime() {
         let mut service = Service::new();
 
-        let client_id = add_account(&mut service, "document_number_1");
+        let client_id = add_client(&mut service, "document_number_1");
         service
             .create_credit_transaction(client_id, Decimal::from(10))
             .unwrap();
@@ -585,7 +585,7 @@ mod tests {
     fn test_client_info_returns_client_data_and_balance() {
         let mut service = Service::new();
 
-        let client_id = add_account(&mut service, "document_number_1");
+        let client_id = add_client(&mut service, "document_number_1");
 
         assert_eq!(
             service.create_credit_transaction(client_id, Decimal::new(1, 1)),

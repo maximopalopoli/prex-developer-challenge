@@ -1,7 +1,10 @@
 use rust_decimal::Decimal;
 use std::io::Error;
 
-pub(crate) fn save_state(balances: Vec<(u64, Decimal)>, file_number: u64) -> Result<String, Error> {
+pub(crate) fn save_balances(
+    balances: Vec<(u64, Decimal)>,
+    file_number: u64,
+) -> Result<String, Error> {
     let today_string = chrono::Local::now().format("%d%m%Y").to_string();
 
     let file_name = format!("{}_{}.DAT", today_string, file_number);

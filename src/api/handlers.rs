@@ -17,7 +17,7 @@ use crate::{
     storage,
 };
 
-fn get_lock(lock: &Mutex<Service>) -> Result<MutexGuard<'_, Service>, ApiError> {
+fn lock_service(lock: &Mutex<Service>) -> Result<MutexGuard<'_, Service>, ApiError> {
     match lock.lock() {
         Ok(guard) => Ok(guard),
         Err(_) => Err(ApiError::LockPoisoned),
@@ -32,9 +32,9 @@ async fn new_client(
     let req_data = info.into_inner();
 
     let new_client_id = {
-        let mut serv = get_lock(&service)?;
+        let mut serv = lock_service(&service)?;
 
-        serv.create_account(
+        serv.create_client(
             req_data.client_name,
             req_data.birth_date,
             req_data.document_number,
@@ -55,7 +55,7 @@ async fn new_credit_transaction(
     let req_data = info.into_inner();
 
     let new_client_balance = {
-        let mut serv = get_lock(&service)?;
+        let mut serv = lock_service(&service)?;
 
         serv.create_credit_transaction(req_data.client_id, req_data.credit_amount)?
     };
@@ -73,7 +73,7 @@ async fn new_debit_transaction(
     let req_data = info.into_inner();
 
     let new_client_balance = {
-        let mut serv = get_lock(&service)?;
+        let mut serv = lock_service(&service)?;
 
         serv.create_debit_transaction(req_data.client_id, req_data.debit_amount)?
     };
@@ -91,7 +91,7 @@ async fn client_balance(
     let req_data = info.into_inner();
 
     let client_info = {
-        let serv = get_lock(&service)?;
+        let serv = lock_service(&service)?;
 
         serv.client_info(req_data.user_id)?
     };
@@ -108,7 +108,7 @@ async fn client_balance(
 #[post("/store_balances")]
 async fn store_balances(service: web::Data<Mutex<Service>>) -> Result<HttpResponse, ApiError> {
     let (balances, file_number) = {
-        let mut serv = get_lock(&service)?;
+        let mut serv = lock_service(&service)?;
 
         serv.store_balances()
     };
@@ -117,7 +117,7 @@ async fn store_balances(service: web::Data<Mutex<Service>>) -> Result<HttpRespon
     // The snapshot is kept to put it back.
     let snapshot = balances.clone();
 
-    let written = web::block(move || storage::save_state(balances, file_number))
+    let written = web::block(move || storage::save_balances(balances, file_number))
         .await
         .map_err(|_| ApiError::BlockingTask)
         .and_then(|result| result.map_err(ApiError::FileWrite));
