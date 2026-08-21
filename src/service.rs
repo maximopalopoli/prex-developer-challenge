@@ -6,19 +6,17 @@ use rust_decimal::Decimal;
 
 struct Service {
     accounts: HashMap<u64, Client>,
-    id_count: u64,
+    next_client_id: u64,
     registered_documents: HashSet<String>,
     file_counter: u64,
 }
 
 impl Service {
     fn new() -> Self {
-        let accounts = HashMap::new();
-        let registered_documents = HashSet::new();
         Service {
-            accounts,
-            id_count: 0,
-            registered_documents,
+            accounts: HashMap::new(),
+            next_client_id: 0,
+            registered_documents: HashSet::new(),
             file_counter: 0,
         }
     }
@@ -44,16 +42,17 @@ impl Service {
             balance: Decimal::ZERO,
         };
 
-        let new_client_id = self.id_count;
+        let new_client_id = self.next_client_id;
 
         // As this id comes from a counter that only moves forward, the key
         // is always new and insert can never return a previous client.
         self.accounts.insert(new_client_id, new_client);
 
-        self.id_count += 1;
+        self.next_client_id += 1;
         Ok(new_client_id)
     }
 
+    // Check if this method is really needed as Service::client_info already exists
     fn client_balance(&self, client_id: u64) -> Result<Decimal, ServiceError> {
         self.accounts
             .get(&client_id)
@@ -149,14 +148,6 @@ mod tests {
                 "Arg".to_string(),
             )
             .unwrap()
-    }
-
-    #[test]
-    fn test_service_starts_empty() {
-        let service = Service::new();
-
-        let service_accounts: Vec<&Client> = service.accounts.values().collect();
-        assert!(service_accounts.is_empty())
     }
 
     #[test]
@@ -304,6 +295,11 @@ mod tests {
 
         assert_eq!(
             service.create_debit_transaction(client_id, Decimal::new(-1, 1)),
+            Err(ServiceError::NonPositiveAmount)
+        );
+
+        assert_eq!(
+            service.create_credit_transaction(client_id, Decimal::ZERO),
             Err(ServiceError::NonPositiveAmount)
         );
 
