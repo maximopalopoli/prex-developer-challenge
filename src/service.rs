@@ -8,6 +8,7 @@ struct Service {
     accounts: HashMap<u64, Client>,
     id_count: u64,
     registered_documents: HashSet<String>,
+    file_counter: u64,
 }
 
 impl Service {
@@ -18,6 +19,7 @@ impl Service {
             accounts,
             id_count: 0,
             registered_documents,
+            file_counter: 0,
         }
     }
 
@@ -91,6 +93,22 @@ impl Service {
         client.balance -= debit_amount;
 
         Ok(client.balance)
+    }
+
+    fn store_balances(&mut self) -> (Vec<(u64, Decimal)>, u64) {
+        let mut balances = Vec::new();
+
+        for (client_id, client) in &mut self.accounts {
+            balances.push((*client_id, client.balance));
+            client.balance = Decimal::ZERO;
+        }
+
+        // HashMap iteration order is arbitrary, so the cut is sorted by id to
+        // keep the generated file stable across runs.
+        balances.sort_by_key(|(id, _)| *id);
+        self.file_counter += 1;
+
+        (balances, self.file_counter)
     }
 }
 
@@ -305,5 +323,48 @@ mod tests {
 
         let new_client_id = add_account(&mut service, "document_number_2");
         assert_eq!(new_client_id, 1);
+    }
+
+    #[test]
+    fn test_store_balances_empty() {
+        let mut service = Service::new();
+
+        assert!(service.store_balances().0.is_empty())
+    }
+
+    #[test]
+    fn test_store_balances_multiple_accounts() {
+        let mut service = Service::new();
+
+        let client_1 = add_account(&mut service, "document_number_1");
+        let client_2 = add_account(&mut service, "document_number_2");
+
+        service
+            .create_credit_transaction(client_2, Decimal::new(5, 1))
+            .unwrap();
+
+        let (balances, file_number) = service.store_balances();
+
+        assert_eq!(file_number, 1);
+        assert_eq!(balances.len(), 2);
+        assert_eq!(balances[0], (client_1, Decimal::ZERO));
+        assert_eq!(balances[1], (client_2, Decimal::new(5, 1)));
+
+        assert_eq!(service.client_balance(client_1), Ok(Decimal::ZERO));
+        assert_eq!(service.client_balance(client_2), Ok(Decimal::ZERO));
+    }
+
+    #[test]
+    fn test_successive_cuts_increase_the_file_number() {
+        let mut service = Service::new();
+
+        let (balances, file_number) = service.store_balances();
+
+        assert!(balances.is_empty());
+        assert_eq!(file_number, 1);
+
+        let (balances, file_number) = service.store_balances();
+        assert!(balances.is_empty());
+        assert_eq!(file_number, 2);
     }
 }
