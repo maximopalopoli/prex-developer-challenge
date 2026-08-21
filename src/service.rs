@@ -11,6 +11,12 @@ pub struct Service {
     file_counter: u64,
 }
 
+impl Default for Service {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Service {
     pub fn new() -> Self {
         Service {
@@ -49,14 +55,6 @@ impl Service {
         self.accounts.insert(self.next_client_id, new_client);
 
         Ok(self.next_client_id)
-    }
-
-    // Check if this method is really needed as Service::client_info already exists
-    pub(super) fn client_balance(&self, client_id: u64) -> Result<Decimal, ServiceError> {
-        self.accounts
-            .get(&client_id)
-            .map(|client| client.balance)
-            .ok_or(ServiceError::ClientDoesNotExist)
     }
 
     pub(super) fn create_credit_transaction(
@@ -146,7 +144,10 @@ mod tests {
 
         let new_client_id = add_account(&mut service, "document_number_1");
 
-        assert_eq!(service.client_balance(new_client_id), Ok(Decimal::ZERO));
+        assert_eq!(
+            service.client_info(new_client_id).unwrap().balance,
+            Decimal::ZERO
+        );
     }
 
     #[test]
@@ -158,8 +159,14 @@ mod tests {
         let second_client = add_account(&mut service, "document_number_2");
 
         assert_ne!(first_client, second_client);
-        assert_eq!(service.client_balance(first_client), Ok(Decimal::ZERO));
-        assert_eq!(service.client_balance(second_client), Ok(Decimal::ZERO));
+        assert_eq!(
+            service.client_info(first_client).unwrap().balance,
+            Decimal::ZERO
+        );
+        assert_eq!(
+            service.client_info(second_client).unwrap().balance,
+            Decimal::ZERO
+        );
     }
 
     #[test]
@@ -167,7 +174,7 @@ mod tests {
         let service = Service::new();
 
         assert_eq!(
-            service.client_balance(0),
+            service.client_info(0),
             Err(ServiceError::ClientDoesNotExist)
         );
     }
@@ -183,7 +190,10 @@ mod tests {
             Ok(Decimal::from(10))
         );
 
-        assert_eq!(service.client_balance(client_id), Ok(Decimal::from(10)));
+        assert_eq!(
+            service.client_info(client_id).unwrap().balance,
+            Decimal::from(10)
+        );
     }
 
     #[test]
@@ -202,7 +212,10 @@ mod tests {
             Ok(Decimal::new(3, 1))
         );
 
-        assert_eq!(service.client_balance(client_id), Ok(Decimal::new(3, 1)));
+        assert_eq!(
+            service.client_info(client_id).unwrap().balance,
+            Decimal::new(3, 1)
+        );
     }
 
     #[test]
@@ -231,7 +244,10 @@ mod tests {
             Ok(Decimal::from(5))
         );
 
-        assert_eq!(service.client_balance(client_id), Ok(Decimal::from(5)));
+        assert_eq!(
+            service.client_info(client_id).unwrap().balance,
+            Decimal::from(5)
+        );
     }
 
     #[test]
@@ -250,7 +266,10 @@ mod tests {
             Ok(Decimal::ZERO)
         );
 
-        assert_eq!(service.client_balance(client_id), Ok(Decimal::ZERO));
+        assert_eq!(
+            service.client_info(client_id).unwrap().balance,
+            Decimal::ZERO
+        );
     }
 
     #[test]
@@ -269,7 +288,10 @@ mod tests {
             Ok(Decimal::new(-1, 1))
         );
 
-        assert_eq!(service.client_balance(client_id), Ok(Decimal::new(-1, 1)));
+        assert_eq!(
+            service.client_info(client_id).unwrap().balance,
+            Decimal::new(-1, 1)
+        );
     }
 
     #[test]
@@ -344,8 +366,14 @@ mod tests {
         assert_eq!(balances[0], (client_1, Decimal::ZERO));
         assert_eq!(balances[1], (client_2, Decimal::new(5, 1)));
 
-        assert_eq!(service.client_balance(client_1), Ok(Decimal::ZERO));
-        assert_eq!(service.client_balance(client_2), Ok(Decimal::ZERO));
+        assert_eq!(
+            service.client_info(client_1).unwrap().balance,
+            Decimal::ZERO
+        );
+        assert_eq!(
+            service.client_info(client_2).unwrap().balance,
+            Decimal::ZERO
+        );
     }
 
     #[test]

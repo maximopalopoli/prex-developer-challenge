@@ -5,9 +5,9 @@ use actix_web::{HttpResponse, get, post, web};
 use crate::{
     api::{
         dto::{
-            ClientBalanceRequest, ClientBalanceResponse, NewClientRequest, NewClientResponse,
-            NewCreditTransactionRequest, NewCreditTransactionResponse, NewDebitTransactionRequest,
-            NewDebitTransactionResponse, StoreBalancesResponse,
+            BalanceResponse, ClientBalanceRequest, ClientBalanceResponse, NewClientRequest,
+            NewClientResponse, NewCreditTransactionRequest, NewDebitTransactionRequest,
+            StoreBalancesResponse,
         },
         error::ApiError,
     },
@@ -18,7 +18,7 @@ use crate::{
 fn get_lock(lock: &Mutex<Service>) -> Result<MutexGuard<'_, Service>, ApiError> {
     match lock.lock() {
         Ok(guard) => Ok(guard),
-        Err(_) => Err(ApiError::Internal),
+        Err(_) => Err(ApiError::LockPoisoned),
     }
 }
 
@@ -58,7 +58,7 @@ async fn new_credit_transaction(
         serv.create_credit_transaction(req_data.client_id, req_data.credit_amount)?
     };
 
-    Ok(HttpResponse::Ok().json(NewCreditTransactionResponse {
+    Ok(HttpResponse::Ok().json(BalanceResponse {
         client_balance: new_client_balance,
     }))
 }
@@ -76,7 +76,7 @@ async fn new_debit_transaction(
         serv.create_debit_transaction(req_data.client_id, req_data.debit_amount)?
     };
 
-    Ok(HttpResponse::Ok().json(NewDebitTransactionResponse {
+    Ok(HttpResponse::Ok().json(BalanceResponse {
         client_balance: new_client_balance,
     }))
 }
@@ -111,8 +111,10 @@ async fn store_balances(service: web::Data<Mutex<Service>>) -> Result<HttpRespon
         serv.store_balances()
     };
 
-    let generated_file_name =
-        storage::save_state(balances, file_number).map_err(|_| ApiError::Internal)?;
+    let generated_file_name = web::block(move || storage::save_state(balances, file_number))
+        .await
+        .map_err(|_| ApiError::BlockingTask)?
+        .map_err(ApiError::FileWrite)?;
 
     Ok(HttpResponse::Ok().json(StoreBalancesResponse {
         generated_file_name,

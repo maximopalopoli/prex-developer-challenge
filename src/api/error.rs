@@ -7,7 +7,9 @@ use crate::error::ServiceError::{self, ClientDoesNotExist, DuplicateDocument, No
 #[derive(Debug)]
 pub enum ApiError {
     Domain(ServiceError),
-    Internal,
+    LockPoisoned,
+    FileWrite(std::io::Error),
+    BlockingTask,
 }
 
 impl From<ServiceError> for ApiError {
@@ -20,7 +22,9 @@ impl Display for ApiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Domain(error) => write!(f, "{error}"),
-            Self::Internal => write!(f, "internal server error"),
+            Self::LockPoisoned => write!(f, "internal server error"),
+            Self::FileWrite(_) => write!(f, "internal server error"),
+            Self::BlockingTask => write!(f, "internal server error"),
         }
     }
 }
@@ -31,7 +35,9 @@ impl ResponseError for ApiError {
             Self::Domain(ClientDoesNotExist) => StatusCode::NOT_FOUND,
             Self::Domain(DuplicateDocument) => StatusCode::CONFLICT,
             Self::Domain(NonPositiveAmount) => StatusCode::BAD_REQUEST,
-            Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::LockPoisoned => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::FileWrite(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::BlockingTask => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }

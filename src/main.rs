@@ -7,6 +7,9 @@ use prex_challenge::service::Service;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    let host = std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+    let port = std::env::var("PORT").unwrap_or_else(|_| "8080".to_string());
+
     let state = web::Data::new(Mutex::new(Service::new()));
 
     HttpServer::new(move || {
@@ -18,7 +21,7 @@ async fn main() -> std::io::Result<()> {
             .service(handlers::client_balance)
             .service(handlers::store_balances)
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind((host, port.parse().expect("PORT must be a number")))?
     .run()
     .await
 }

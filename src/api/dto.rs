@@ -16,20 +16,13 @@ pub(crate) struct NewClientResponse {
     pub(crate) client_id: u64,
 }
 
-// NewCreditTransaction
+// NewCreditTransaction & NewDebitTransaction
 
 #[derive(Deserialize)]
 pub(crate) struct NewCreditTransactionRequest {
     pub(crate) client_id: u64,
     pub(crate) credit_amount: Decimal,
 }
-
-#[derive(Serialize)]
-pub(crate) struct NewCreditTransactionResponse {
-    pub(crate) client_balance: Decimal,
-}
-
-// NewDebitTransaction
 
 #[derive(Deserialize)]
 pub(crate) struct NewDebitTransactionRequest {
@@ -38,7 +31,7 @@ pub(crate) struct NewDebitTransactionRequest {
 }
 
 #[derive(Serialize)]
-pub(crate) struct NewDebitTransactionResponse {
+pub(crate) struct BalanceResponse {
     pub(crate) client_balance: Decimal,
 }
 
