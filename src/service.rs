@@ -34,8 +34,14 @@ impl Service {
         document_number: String,
         country: String,
     ) -> Result<u64, ServiceError> {
-        // Note: Here we may normalize the number before comparison
-        // as two strings may refer to the same number
+        // Every field is checked before the first write, so a rejected client
+        // never leaves its document registered.
+        let client_name = validate_non_empty(client_name, "client_name")?;
+        let document_number = validate_non_empty(document_number, "document_number")?;
+        let country = validate_non_empty(country, "country")?;
+
+        // Note: only the surrounding spaces are removed. Two documents that
+        // differ in any other character are different documents.
         if !self.registered_documents.insert(document_number.clone()) {
             return Err(ServiceError::DuplicateDocument);
         }
@@ -124,6 +130,17 @@ impl Service {
             .ok_or(ServiceError::ClientDoesNotExist)
             .cloned()
     }
+}
+
+/// Returns the value without its surrounding spaces, or an error naming the field when nothing is left.
+fn validate_non_empty(value: String, field: &'static str) -> Result<String, ServiceError> {
+    let value = value.trim();
+
+    if value.is_empty() {
+        return Err(ServiceError::EmptyField(field));
+    }
+
+    Ok(value.to_string())
 }
 
 fn validate_positive_amount(amount: Decimal) -> Result<(), ServiceError> {
@@ -350,6 +367,85 @@ mod tests {
 
         let new_client_id = add_account(&mut service, "document_number_2");
         assert_eq!(new_client_id, 2);
+    }
+
+    #[test]
+    fn test_client_fields_cannot_be_empty() {
+        let mut service = Service::new();
+
+        assert_eq!(
+            service.create_account(
+                "   ".to_string(),
+                "1990-05-12".to_string(),
+                "document_number_1".to_string(),
+                "Arg".to_string()
+            ),
+            Err(ServiceError::EmptyField("client_name"))
+        );
+
+        assert_eq!(
+            service.create_account(
+                "Juan".to_string(),
+                "1990-05-12".to_string(),
+                "".to_string(),
+                "Arg".to_string()
+            ),
+            Err(ServiceError::EmptyField("document_number"))
+        );
+
+        assert_eq!(
+            service.create_account(
+                "Juan".to_string(),
+                "1990-05-12".to_string(),
+                "document_number_1".to_string(),
+                " ".to_string()
+            ),
+            Err(ServiceError::EmptyField("country"))
+        );
+    }
+
+    #[test]
+    fn test_a_rejected_client_leaves_its_document_free() {
+        let mut service = Service::new();
+
+        let rejected = service.create_account(
+            "".to_string(),
+            "1990-05-12".to_string(),
+            "document_number_1".to_string(),
+            "Arg".to_string(),
+        );
+        assert!(rejected.is_err());
+
+        assert!(
+            service
+                .create_account(
+                    "Juan".to_string(),
+                    "1990-05-12".to_string(),
+                    "document_number_1".to_string(),
+                    "Arg".to_string()
+                )
+                .is_ok()
+        );
+    }
+
+    #[test]
+    fn test_client_fields_are_stored_without_surrounding_spaces() {
+        let mut service = Service::new();
+
+        let client_id = service
+            .create_account(
+                "  Juan  ".to_string(),
+                "1990-05-12".to_string(),
+                "  document_number_1 ".to_string(),
+                " Arg ".to_string(),
+            )
+            .unwrap();
+
+        let client = service.client_info(client_id).unwrap();
+
+        assert_eq!(client.client_name, "Juan");
+        assert_eq!(client.document_number, "document_number_1");
+        assert_eq!(client.country, "Arg");
     }
 
     #[test]

@@ -2,7 +2,9 @@ use std::fmt::Display;
 
 use actix_web::{HttpResponse, ResponseError, http::StatusCode};
 
-use crate::error::ServiceError::{self, ClientDoesNotExist, DuplicateDocument, NonPositiveAmount};
+use crate::error::ServiceError::{
+    self, ClientDoesNotExist, DuplicateDocument, EmptyField, NonPositiveAmount,
+};
 
 #[derive(Debug)]
 pub enum ApiError {
@@ -51,6 +53,7 @@ impl ResponseError for ApiError {
             Self::Domain(ClientDoesNotExist) => StatusCode::NOT_FOUND,
             Self::Domain(DuplicateDocument) => StatusCode::CONFLICT,
             Self::Domain(NonPositiveAmount) => StatusCode::BAD_REQUEST,
+            Self::Domain(EmptyField(_)) => StatusCode::BAD_REQUEST,
             Self::LockPoisoned => StatusCode::INTERNAL_SERVER_ERROR,
             Self::FileWrite(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::BlockingTask => StatusCode::INTERNAL_SERVER_ERROR,
