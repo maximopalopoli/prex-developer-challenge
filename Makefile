@@ -29,3 +29,8 @@ test_new_debit_tx: build
 	@./target/debug/prex-challenge & PID=$$!; sleep 2; \
 	bash scripts/new_debit_tx.sh; rc=$$?; \
 	kill $$PID; exit $$rc
+
+test_client_balance: build
+	@./target/debug/prex-challenge & PID=$$!; sleep 2; \
+	bash scripts/client_balance.sh; rc=$$?; \
+	kill $$PID; exit $$rc

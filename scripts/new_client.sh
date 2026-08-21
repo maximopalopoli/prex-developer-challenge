@@ -11,12 +11,12 @@ check() { # check <what> <expected status> <actual status>
 post() { curl -s -o /dev/null -w '%{http_code}' -X POST "$URL" -H 'Content-Type: application/json' -d "$1"; }
 
 check "creates a client" 201 \
-    "$(post "{\"client_name\":\"Ada\",\"birth_date\":\"1990-05-12\",\"document_number\":\"$DOC\",\"country\":\"AR\"}")"
+    "$(post "{\"client_name\":\"Juan\",\"birth_date\":\"1990-05-12\",\"document_number\":\"$DOC\",\"country\":\"AR\"}")"
 
 check "rejects a duplicate document" 409 \
-    "$(post "{\"client_name\":\"Grace\",\"birth_date\":\"1990-05-12\",\"document_number\":\"$DOC\",\"country\":\"AR\"}")"
+    "$(post "{\"client_name\":\"Maria\",\"birth_date\":\"1990-05-12\",\"document_number\":\"$DOC\",\"country\":\"AR\"}")"
 
 check "rejects an incomplete body" 400 \
-    "$(post '{"client_name":"Grace"}')"
+    "$(post '{"client_name":"Maria"}')"
 
 exit $fails

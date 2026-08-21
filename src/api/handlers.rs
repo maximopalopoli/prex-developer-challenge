@@ -1,12 +1,13 @@
 use std::sync::{Mutex, MutexGuard};
 
-use actix_web::{HttpResponse, post, web};
+use actix_web::{HttpResponse, get, post, web};
 
 use crate::{
     api::{
         dto::{
-            NewClientRequest, NewClientResponse, NewCreditTransactionRequest,
-            NewCreditTransactionResponse, NewDebitTransactionRequest, NewDebitTransactionResponse,
+            ClientBalanceRequest, ClientBalanceResponse, NewClientRequest, NewClientResponse,
+            NewCreditTransactionRequest, NewCreditTransactionResponse, NewDebitTransactionRequest,
+            NewDebitTransactionResponse,
         },
         error::ApiError,
     },
@@ -76,5 +77,27 @@ async fn new_debit_transaction(
 
     Ok(HttpResponse::Ok().json(NewDebitTransactionResponse {
         client_balance: new_client_balance,
+    }))
+}
+
+#[get("/client_balance")]
+async fn client_balance(
+    info: web::Query<ClientBalanceRequest>,
+    service: web::Data<Mutex<Service>>,
+) -> Result<HttpResponse, ApiError> {
+    let req_data = info.into_inner();
+
+    let client_info = {
+        let serv = get_lock(&service)?;
+
+        serv.client_info(req_data.user_id)?
+    };
+
+    Ok(HttpResponse::Ok().json(ClientBalanceResponse {
+        client_name: client_info.client_name,
+        birth_date: client_info.birth_date,
+        document_number: client_info.document_number,
+        country: client_info.country,
+        client_balance: client_info.balance,
     }))
 }

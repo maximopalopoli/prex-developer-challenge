@@ -13,7 +13,7 @@ post() { curl -s -o /dev/null -w '%{http_code}' -X POST "$2" -H 'Content-Type: a
 
 post_body() { curl -s -X POST "$2" -H 'Content-Type: application/json' -d "$1"; }
 
-ID=$(post_body "{\"client_name\":\"Ada\",\"birth_date\":\"1990-05-12\",\"document_number\":\"$DOC\",\"country\":\"AR\"}" $URL_1 \
+ID=$(post_body "{\"client_name\":\"Juan\",\"birth_date\":\"1990-05-12\",\"document_number\":\"$DOC\",\"country\":\"AR\"}" $URL_1 \
        | sed 's/.*"client_id":\([0-9]*\).*/\1/')
 
 post_body "{\"client_id\":$ID,\"credit_amount\":0.3}" $URL_3 > /dev/null

@@ -41,3 +41,19 @@ pub(crate) struct NewDebitTransactionRequest {
 pub(crate) struct NewDebitTransactionResponse {
     pub(crate) client_balance: Decimal,
 }
+
+// ClientBalance
+
+#[derive(Deserialize)]
+pub(crate) struct ClientBalanceRequest {
+    pub(crate) user_id: u64,
+}
+
+#[derive(Serialize)]
+pub(crate) struct ClientBalanceResponse {
+    pub(crate) client_name: String,
+    pub(crate) birth_date: String,
+    pub(crate) document_number: String,
+    pub(crate) country: String,
+    pub(crate) client_balance: Decimal,
+}
