@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use actix_web::{ResponseError, http::StatusCode};
+use actix_web::{HttpResponse, ResponseError, http::StatusCode};
 
 use crate::error::ServiceError::{self, ClientDoesNotExist, DuplicateDocument, NonPositiveAmount};
 
@@ -30,6 +30,22 @@ impl Display for ApiError {
 }
 
 impl ResponseError for ApiError {
+    /// Internal failures are loggged with their cause and returned with the generic message of `Display`.
+    fn error_response(&self) -> HttpResponse {
+        match self {
+            Self::Domain(_) => {}
+            Self::LockPoisoned => {
+                log::error!("the service lock was poisoned by a panicking request")
+            }
+            Self::FileWrite(error) => log::error!("could not write the balances file: {error}"),
+            Self::BlockingTask => {
+                log::error!("the task that writes the balances file did not finish")
+            }
+        }
+
+        HttpResponse::build(self.status_code()).body(self.to_string())
+    }
+
     fn status_code(&self) -> StatusCode {
         match self {
             Self::Domain(ClientDoesNotExist) => StatusCode::NOT_FOUND,
